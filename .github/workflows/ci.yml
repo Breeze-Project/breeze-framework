@@ -173,9 +173,11 @@ jobs:
           echo "$TABLES" | grep -q flyway_schema_history
 
   release:
-    needs: [build, migrate-against-real-mysql, migrate-against-real-postgresql]
+    needs: [ build, migrate-against-real-mysql, migrate-against-real-postgresql ]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
