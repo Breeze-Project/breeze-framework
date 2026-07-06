@@ -91,7 +91,7 @@ jobs:
       - name: Run Flyway migrations against live MySQL
         run: >
           ./gradlew :breeze-core:flywayMigrate
-          -Pflyway.vendor=mysql
+          -PdbVendor=mysql
           -Pflyway.url=jdbc:mysql://127.0.0.1:3306/breezecore
           -Pflyway.user=root
           -Pflyway.password=breeze_ci_password
@@ -99,7 +99,7 @@ jobs:
       - name: Run Flyway migrations a second time (idempotency check)
         run: >
           ./gradlew :breeze-core:flywayMigrate
-          -Pflyway.vendor=mysql
+          -PdbVendor=mysql
           -Pflyway.url=jdbc:mysql://127.0.0.1:3306/breezecore
           -Pflyway.user=root
           -Pflyway.password=breeze_ci_password
@@ -149,7 +149,7 @@ jobs:
       - name: Run Flyway migrations against live PostgreSQL
         run: >
           ./gradlew :breeze-core:flywayMigrate
-          -Pflyway.vendor=postgresql
+          -PdbVendor=postgresql
           -Pflyway.url=jdbc:postgresql://127.0.0.1:5432/breezecore
           -Pflyway.user=postgres
           -Pflyway.password=breeze_ci_password
@@ -157,7 +157,7 @@ jobs:
       - name: Run Flyway migrations a second time (idempotency check)
         run: >
           ./gradlew :breeze-core:flywayMigrate
-          -Pflyway.vendor=postgresql
+          -PdbVendor=postgresql
           -Pflyway.url=jdbc:postgresql://127.0.0.1:5432/breezecore
           -Pflyway.user=postgres
           -Pflyway.password=breeze_ci_password
