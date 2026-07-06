@@ -4,6 +4,7 @@ buildscript {
     }
     dependencies {
         classpath("org.flywaydb:flyway-mysql:10.15.0")
+        classpath("org.postgresql:postgresql:42.7.3")
     }
 }
 
@@ -32,7 +33,7 @@ dependencies {
 }
 
 flyway {
-    val vendor = (project.findProperty("flyway.vendor") as String?) ?: "mysql"
+    val vendor = (project.findProperty("dbVendor") as String?) ?: "mysql"
     locations = arrayOf("classpath:migrations/$vendor/")
     url = (project.findProperty("flyway.url") as String?) ?: "jdbc:mysql://localhost:3306/breezecore"
     user = (project.findProperty("flyway.user") as String?) ?: "root"
