@@ -68,4 +68,8 @@ public class DatabaseManager {
       logger.info("Database connection pool closed.");
     }
   }
+
+  public boolean isConnected() {
+    return dataSource != null && !dataSource.isClosed();
+  }
 }
