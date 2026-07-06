@@ -1,0 +1,186 @@
+name: Build breeze-framework
+
+on:
+  push:
+    branches: [main, "release/**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build breeze-api
+        run: ./gradlew :breeze-api:build
+
+      - name: Test breeze-api
+        run: ./gradlew :breeze-api:test
+
+      - name: Build breeze-core
+        run: ./gradlew :breeze-core:build
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
+
+      - name: Test breeze-core
+        run: ./gradlew :breeze-core:test
+
+      - name: Verify breeze-api publishes without breeze-core
+        run: ./gradlew :breeze-api:publishToMavenLocal
+
+      - name: Upload breeze-core jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: breeze-core
+          path: breeze-core/build/libs/*.jar
+          retention-days: 14
+
+  migrate-against-real-mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: breeze_ci_password
+          MYSQL_DATABASE: breezecore
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -uroot -pbreeze_ci_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in $(seq 1 30); do
+            mysqladmin ping -h127.0.0.1 -uroot -pbreeze_ci_password --silent && break
+            sleep 2
+          done
+
+      - name: Run Flyway migrations against live MySQL
+        run: >
+          ./gradlew :breeze-core:flywayMigrate
+          -Pflyway.vendor=mysql
+          -Pflyway.url=jdbc:mysql://127.0.0.1:3306/breezecore
+          -Pflyway.user=root
+          -Pflyway.password=breeze_ci_password
+
+      - name: Run Flyway migrations a second time (idempotency check)
+        run: >
+          ./gradlew :breeze-core:flywayMigrate
+          -Pflyway.vendor=mysql
+          -Pflyway.url=jdbc:mysql://127.0.0.1:3306/breezecore
+          -Pflyway.user=root
+          -Pflyway.password=breeze_ci_password
+
+      - name: Verify expected tables exist
+        run: |
+          TABLES=$(mysql -h127.0.0.1 -uroot -pbreeze_ci_password breezecore -N -e "SHOW TABLES;")
+          echo "$TABLES"
+          echo "$TABLES" | grep -q breeze_players
+          echo "$TABLES" | grep -q breeze_module_registry
+          echo "$TABLES" | grep -q flyway_schema_history
+
+  migrate-against-real-postgresql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: breeze_ci_password
+          POSTGRES_DB: breezecore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h 127.0.0.1 -U postgres && break
+            sleep 2
+          done
+
+      - name: Run Flyway migrations against live PostgreSQL
+        run: >
+          ./gradlew :breeze-core:flywayMigrate
+          -Pflyway.vendor=postgresql
+          -Pflyway.url=jdbc:postgresql://127.0.0.1:5432/breezecore
+          -Pflyway.user=postgres
+          -Pflyway.password=breeze_ci_password
+
+      - name: Run Flyway migrations a second time (idempotency check)
+        run: >
+          ./gradlew :breeze-core:flywayMigrate
+          -Pflyway.vendor=postgresql
+          -Pflyway.url=jdbc:postgresql://127.0.0.1:5432/breezecore
+          -Pflyway.user=postgres
+          -Pflyway.password=breeze_ci_password
+
+      - name: Verify expected tables exist
+        env:
+          PGPASSWORD: breeze_ci_password
+        run: |
+          TABLES=$(psql -h 127.0.0.1 -U postgres -d breezecore -tAc "SELECT table_name FROM information_schema.tables WHERE table_schema='public';")
+          echo "$TABLES"
+          echo "$TABLES" | grep -q breeze_players
+          echo "$TABLES" | grep -q breeze_module_registry
+          echo "$TABLES" | grep -q flyway_schema_history
+
+  release:
+    needs: [build, migrate-against-real-mysql, migrate-against-real-postgresql]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build release artifacts
+        run: ./gradlew build
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: breeze-core/build/libs/*.jar
+          generate_release_notes: true

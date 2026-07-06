@@ -1,0 +1,11 @@
+database:
+  type: mysql
+  host: localhost
+  port: 3306
+  name: breezecore
+  user: root
+  password: "CHANGE_ME"
+  pool-size: 10
+
+modules:
+  directory: modules
