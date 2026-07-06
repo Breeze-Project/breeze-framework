@@ -27,88 +27,6 @@ import ru.breezeproject.core.command.BukkitCommandSenderAdapter;
 import ru.breezeproject.core.command.DynamicCommandRegistrar;
 
 public class BreezeModuleContextImpl implements BreezeModuleContext {
-  private final ServiceRegistry serviceRegistry;
-  private final EventBus delegateBus;
-  private final EventBus trackingBus;
-  private final Path dataFolder;
-  private final DynamicCommandRegistrar commandRegistrar;
-  private final JavaPlugin ownerPlugin;
-  private final String moduleName;
-
-  private final List<Command> registeredCommands = new ArrayList<>();
-  private final List<Listener> registeredListeners = new ArrayList<>();
-  private final List<Subscription> subscriptions = new ArrayList<>();
-
-  public BreezeModuleContextImpl(final ServiceRegistry serviceRegistry,
-      final EventBus eventBus,
-      final Path dataFolder,
-      final DynamicCommandRegistrar commandRegistrar,
-      final JavaPlugin ownerPlugin,
-      final String moduleName) {
-    this.serviceRegistry = serviceRegistry;
-    this.delegateBus = eventBus;
-    this.trackingBus = new TrackingEventBus(eventBus, subscriptions);
-    this.dataFolder = dataFolder;
-    this.commandRegistrar = commandRegistrar;
-    this.ownerPlugin = ownerPlugin;
-    this.moduleName = moduleName;
-
-    try {
-      if (!Files.exists(dataFolder)) {
-        Files.createDirectories(dataFolder);
-      }
-    } catch (final Exception e) {
-      throw new IllegalStateException("Could not create module data directory", e);
-    }
-  }
-
-  @Override
-  public ServiceRegistry getServiceRegistry() {
-    return serviceRegistry;
-  }
-
-  @Override
-  public EventBus getEventBus() {
-    return trackingBus;
-  }
-
-  @Override
-  public Path getDataFolder() {
-    return dataFolder;
-  }
-
-  @Override
-  public void registerCommand(final String name, final List<String> aliases, final String description, final String usage,
-      final ModuleCommandExecutor executor, final ModuleTabCompleter tabCompleter) {
-    final CommandExecutor bukkitExecutor = (sender, command, label, args) -> executor
-        .onCommand(new BukkitCommandSenderAdapter(sender), label, args);
-    final TabCompleter bukkitTabCompleter = tabCompleter == null ? null
-        : (sender, command, label, args) -> tabCompleter.onTabComplete(new BukkitCommandSenderAdapter(sender), args);
-
-    final Command command = commandRegistrar.register(
-        moduleName.toLowerCase(), name, aliases, description, usage,
-        bukkitExecutor, bukkitTabCompleter);
-    registeredCommands.add(command);
-  }
-
-  @Override
-  public void registerListener(final BreezeListener listener) {
-    if (!(listener instanceof final Listener bukkitListener)) {
-      throw new IllegalArgumentException("Listener must implement org.bukkit.event.Listener");
-    }
-    Bukkit.getPluginManager().registerEvents(bukkitListener, ownerPlugin);
-    registeredListeners.add(bukkitListener);
-  }
-
-  public void cleanup() {
-    subscriptions.forEach(delegateBus::unsubscribe);
-    subscriptions.clear();
-    registeredCommands.forEach(commandRegistrar::unregister);
-    registeredCommands.clear();
-    registeredListeners.forEach(HandlerList::unregisterAll);
-    registeredListeners.clear();
-  }
-
   private static final class TrackingEventBus implements EventBus {
     private final EventBus delegate;
     private final List<Subscription> sink;
@@ -143,5 +61,89 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     public <T extends BreezeEvent> void publish(final T event) {
       delegate.publish(event);
     }
+  }
+
+  private final ServiceRegistry serviceRegistry;
+  private final EventBus delegateBus;
+  private final EventBus trackingBus;
+  private final Path dataFolder;
+  private final DynamicCommandRegistrar commandRegistrar;
+  private final JavaPlugin ownerPlugin;
+
+  private final String moduleName;
+  private final List<Command> registeredCommands = new ArrayList<>();
+  private final List<Listener> registeredListeners = new ArrayList<>();
+
+  private final List<Subscription> subscriptions = new ArrayList<>();
+
+  public BreezeModuleContextImpl(final ServiceRegistry serviceRegistry,
+      final EventBus eventBus,
+      final Path dataFolder,
+      final DynamicCommandRegistrar commandRegistrar,
+      final JavaPlugin ownerPlugin,
+      final String moduleName) {
+    this.serviceRegistry = serviceRegistry;
+    this.delegateBus = eventBus;
+    this.trackingBus = new TrackingEventBus(eventBus, subscriptions);
+    this.dataFolder = dataFolder;
+    this.commandRegistrar = commandRegistrar;
+    this.ownerPlugin = ownerPlugin;
+    this.moduleName = moduleName;
+
+    try {
+      Files.createDirectories(dataFolder);
+    } catch (final Exception e) {
+      throw new IllegalStateException("Could not create module data directory", e);
+    }
+  }
+
+  @Override
+  public ServiceRegistry getServiceRegistry() {
+    return serviceRegistry;
+  }
+
+  @Override
+  public EventBus getEventBus() {
+    return trackingBus;
+  }
+
+  @Override
+  public Path getDataFolder() {
+    return dataFolder;
+  }
+
+  @Override
+  public void registerCommand(final String name, final List<String> aliases, final String description,
+      final String usage,
+      final ModuleCommandExecutor executor, final ModuleTabCompleter tabCompleter) {
+    final List<String> aliasesCopy = aliases == null ? List.of() : List.copyOf(aliases);
+
+    final CommandExecutor bukkitExecutor = (sender, command, label, args) -> executor
+        .onCommand(new BukkitCommandSenderAdapter(sender), label, args);
+    final TabCompleter bukkitTabCompleter = tabCompleter == null ? null
+        : (sender, command, label, args) -> tabCompleter.onTabComplete(new BukkitCommandSenderAdapter(sender), args);
+
+    final Command command = commandRegistrar.register(
+        moduleName.toLowerCase(), name, aliasesCopy, description, usage,
+        bukkitExecutor, bukkitTabCompleter);
+    registeredCommands.add(command);
+  }
+
+  @Override
+  public void registerListener(final BreezeListener listener) {
+    if (!(listener instanceof final Listener bukkitListener)) {
+      throw new IllegalArgumentException("Listener must implement org.bukkit.event.Listener");
+    }
+    Bukkit.getPluginManager().registerEvents(bukkitListener, ownerPlugin);
+    registeredListeners.add(bukkitListener);
+  }
+
+  public void cleanup() {
+    subscriptions.forEach(delegateBus::unsubscribe);
+    subscriptions.clear();
+    registeredCommands.forEach(commandRegistrar::unregister);
+    registeredCommands.clear();
+    registeredListeners.forEach(HandlerList::unregisterAll);
+    registeredListeners.clear();
   }
 }

@@ -2,6 +2,7 @@ package ru.breezeproject.core.command;
 
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+
 import ru.breezeproject.core.commands.ModulesCommand;
 import ru.breezeproject.core.loader.ModuleManager;
 

@@ -7,7 +7,7 @@ import ru.breezeproject.api.command.BreezeCommandSender;
 public class BukkitCommandSenderAdapter implements BreezeCommandSender {
   private final CommandSender sender;
 
-  public BukkitCommandSenderAdapter(CommandSender sender) {
+  public BukkitCommandSenderAdapter(final CommandSender sender) {
     this.sender = sender;
   }
 
@@ -17,12 +17,12 @@ public class BukkitCommandSenderAdapter implements BreezeCommandSender {
   }
 
   @Override
-  public void sendMessage(String message) {
+  public void sendMessage(final String message) {
     sender.sendMessage(message);
   }
 
   @Override
-  public boolean hasPermission(String permission) {
+  public boolean hasPermission(final String permission) {
     return sender.hasPermission(permission);
   }
 }

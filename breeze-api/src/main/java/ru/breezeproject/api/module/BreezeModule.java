@@ -1,19 +1,19 @@
 package ru.breezeproject.api.module;
 
-import ru.breezeproject.api.config.ModuleConfig;
-
 import java.io.IOException;
 import java.util.logging.Logger;
 
-public abstract class BreezeModule {
+import ru.breezeproject.api.config.ModuleConfig;
 
+public abstract class BreezeModule {
   private String name;
   private boolean enabled;
   private ModuleConfig config;
   private Logger logger;
   private BreezeModuleContext context;
 
-  public final void init(String name, ModuleConfig config, Logger logger, BreezeModuleContext context) {
+  public final void init(final String name, final ModuleConfig config, final Logger logger,
+      final BreezeModuleContext context) {
     this.name = name;
     this.config = config;
     this.logger = logger;
@@ -23,10 +23,6 @@ public abstract class BreezeModule {
   public abstract void onEnable();
 
   public abstract void onDisable();
-
-  final void setEnabled(boolean enabled) {
-    this.enabled = enabled;
-  }
 
   public final String getName() {
     return name;
@@ -51,7 +47,7 @@ public abstract class BreezeModule {
   public final void saveConfig() {
     try {
       config.save();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException("Could not save config for module " + name, e);
     }
   }

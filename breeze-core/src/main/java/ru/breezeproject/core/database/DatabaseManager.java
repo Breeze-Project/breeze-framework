@@ -1,11 +1,11 @@
 package ru.breezeproject.core.database;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.logging.Logger;
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 public class DatabaseManager {
   private static final long CONNECTION_TIMEOUT_MS = 10_000;
@@ -16,14 +16,14 @@ public class DatabaseManager {
   private HikariDataSource dataSource;
   private DatabaseVendor vendor;
 
-  public DatabaseManager(Logger logger) {
+  public DatabaseManager(final Logger logger) {
     this.logger = logger;
   }
 
-  public void connect(DatabaseConfig config) {
+  public void connect(final DatabaseConfig config) {
     this.vendor = DatabaseVendor.fromConfigValue(config.type());
 
-    HikariConfig hikariConfig = new HikariConfig();
+    final HikariConfig hikariConfig = new HikariConfig();
 
     hikariConfig.setDriverClassName(vendor.driverClassName());
     hikariConfig.setJdbcUrl(vendor.buildJdbcUrl(config.host(), config.port(), config.name()));

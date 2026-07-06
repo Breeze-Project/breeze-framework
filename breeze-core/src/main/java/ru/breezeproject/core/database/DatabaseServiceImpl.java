@@ -8,15 +8,15 @@ public class DatabaseServiceImpl implements DatabaseService {
   private final DatabaseManager connectionManager;
   private final DatabaseMigrator migrator;
   private final RollbackRunner rollbackRunner;
-  
-  public DatabaseServiceImpl(Logger logger) {
+
+  public DatabaseServiceImpl(final Logger logger) {
     this.connectionManager = new DatabaseManager(logger);
     this.migrator = new DatabaseMigrator(logger);
     this.rollbackRunner = new RollbackRunner(logger);
   }
 
   @Override
-  public void connect(DatabaseConfig config) {
+  public void connect(final DatabaseConfig config) {
     connectionManager.connect(config);
   }
 
@@ -26,7 +26,7 @@ public class DatabaseServiceImpl implements DatabaseService {
   }
 
   @Override
-  public void rollbackTo(int targetVersion) {
+  public void rollbackTo(final int targetVersion) {
     rollbackRunner.rollbackTo(connectionManager.getDataSource(), connectionManager.getVendor(), targetVersion);
   }
 

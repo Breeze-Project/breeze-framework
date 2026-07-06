@@ -1,58 +1,59 @@
 package ru.breezeproject.core.database;
 
+import java.util.Arrays;
+
 public enum DatabaseVendor {
-
-    MYSQL("mysql", 3306, "com.mysql.cj.jdbc.Driver") {
-        @Override
-        String buildJdbcUrl(String host, int port, String database) {
-            return "jdbc:mysql://" + host + ":" + port + "/" + database
-                    + "?useSSL=false&autoReconnect=true&characterEncoding=utf8";
-        }
-    },
-    POSTGRESQL("postgresql", 5432, "org.postgresql.Driver") {
-        @Override
-        String buildJdbcUrl(String host, int port, String database) {
-            return "jdbc:postgresql://" + host + ":" + port + "/" + database;
-        }
-    };
-
-    private final String configKey;
-    private final int defaultPort;
-    private final String driverClassName;
-
-    DatabaseVendor(String configKey, int defaultPort, String driverClassName) {
-        this.configKey = configKey;
-        this.defaultPort = defaultPort;
-        this.driverClassName = driverClassName;
+  MYSQL("mysql", 3306, "com.mysql.cj.jdbc.Driver") {
+    @Override
+    String buildJdbcUrl(final String host, final int port, final String database) {
+      return "jdbc:mysql://" + host + ":" + port + "/" + database
+          + "?useSSL=false&autoReconnect=true&characterEncoding=utf8";
     }
-
-    abstract String buildJdbcUrl(String host, int port, String database);
-
-    public int defaultPort() {
-        return defaultPort;
+  },
+  POSTGRESQL("postgresql", 5432, "org.postgresql.Driver") {
+    @Override
+    String buildJdbcUrl(final String host, final int port, final String database) {
+      return "jdbc:postgresql://" + host + ":" + port + "/" + database;
     }
+  };
 
-    public String driverClassName() {
-        return driverClassName;
+  public static DatabaseVendor fromConfigValue(final String value) {
+    if (value == null || value.isBlank()) {
+      return MYSQL;
     }
+    return Arrays.stream(values())
+        .filter(v -> v.configKey.equalsIgnoreCase(value.trim()))
+        .findFirst()
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Unknown database.type '" + value + "'. Supported values: mysql, postgresql"));
+  }
 
-    public String migrationsLocation() {
-        return "classpath:migrations/" + configKey + "/";
-    }
+  private final String configKey;
+  private final int defaultPort;
 
-    public String rollbackResourceRoot() {
-        return "rollback/" + configKey;
-    }
+  private final String driverClassName;
 
-    public static DatabaseVendor fromConfigValue(String value) {
-        if (value == null || value.isBlank()) {
-            return MYSQL;
-        }
-        for (DatabaseVendor vendor : values()) {
-            if (vendor.configKey.equalsIgnoreCase(value.trim())) {
-                return vendor;
-            }
-        }
-        throw new IllegalArgumentException("Unknown database.type '" + value + "'. Supported values: mysql, postgresql");
-    }
+  DatabaseVendor(final String configKey, final int defaultPort, final String driverClassName) {
+    this.configKey = configKey;
+    this.defaultPort = defaultPort;
+    this.driverClassName = driverClassName;
+  }
+
+  public int defaultPort() {
+    return defaultPort;
+  }
+
+  public String driverClassName() {
+    return driverClassName;
+  }
+
+  public String migrationsLocation() {
+    return "classpath:migrations/" + configKey + "/";
+  }
+
+  public String rollbackResourceRoot() {
+    return "rollback/" + configKey;
+  }
+
+  abstract String buildJdbcUrl(String host, int port, String database);
 }

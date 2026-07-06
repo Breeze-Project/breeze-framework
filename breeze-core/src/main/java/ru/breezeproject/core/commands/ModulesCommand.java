@@ -4,7 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import ru.breezeproject.api.module.BreezeModule;
+
 import ru.breezeproject.core.loader.ModuleManager;
 
 public class ModulesCommand implements CommandExecutor {
@@ -13,19 +13,19 @@ public class ModulesCommand implements CommandExecutor {
 
   private final ModuleManager moduleManager;
 
-  public ModulesCommand(ModuleManager moduleManager) {
+  public ModulesCommand(final ModuleManager moduleManager) {
     this.moduleManager = moduleManager;
   }
 
   @Override
-  public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+  public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] args) {
     if (args.length >= 1 && args[0].equalsIgnoreCase("reload")) {
       return handleReload(sender, args);
     }
     return listModules(sender);
   }
 
-  private boolean listModules(CommandSender sender) {
+  private boolean listModules(final CommandSender sender) {
     if (!sender.hasPermission(PERMISSION_LIST)) {
       sender.sendMessage(ChatColor.RED + "You don't have permission to do that.");
       return true;
@@ -37,16 +37,16 @@ public class ModulesCommand implements CommandExecutor {
     }
 
     sender.sendMessage(ChatColor.AQUA + "Loaded BreezeCore modules:");
-    for (BreezeModule module : moduleManager.getLoadedModules().values()) {
-      sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + module.getName());
-    }
+    moduleManager.getLoadedModules().values()
+        .forEach(module -> sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + module.getName()));
+
     if (sender.hasPermission(PERMISSION_RELOAD)) {
       sender.sendMessage(ChatColor.DARK_GRAY + "Use /breezemodules reload <name> to reload a single module.");
     }
     return true;
   }
 
-  private boolean handleReload(CommandSender sender, String[] args) {
+  private boolean handleReload(final CommandSender sender, final String[] args) {
     if (!sender.hasPermission(PERMISSION_RELOAD)) {
       sender.sendMessage(ChatColor.RED + "You don't have permission to reload modules.");
       return true;
@@ -57,8 +57,8 @@ public class ModulesCommand implements CommandExecutor {
       return true;
     }
 
-    String name = args[1];
-    boolean success = moduleManager.reload(name);
+    final String name = args[1];
+    final boolean success = moduleManager.reload(name);
 
     if (success) {
       sender.sendMessage(ChatColor.GREEN + "Reloaded module '" + name + "'.");

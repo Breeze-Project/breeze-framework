@@ -3,16 +3,15 @@ package ru.breezeproject.api.event;
 import java.util.function.Consumer;
 
 public interface EventBus {
+  interface Subscription {
+    Class<? extends BreezeEvent> eventType();
+  }
 
-    <T extends BreezeEvent> Subscription subscribe(Class<T> eventType, Consumer<T> handler);
+  <T extends BreezeEvent> Subscription subscribe(Class<T> eventType, Consumer<T> handler);
 
-    <T extends BreezeEvent> Subscription subscribe(Class<T> eventType, EventPriority priority, Consumer<T> handler);
+  <T extends BreezeEvent> Subscription subscribe(Class<T> eventType, EventPriority priority, Consumer<T> handler);
 
-    void unsubscribe(Subscription subscription);
+  void unsubscribe(Subscription subscription);
 
-    <T extends BreezeEvent> void publish(T event);
-
-    public interface Subscription {
-        Class<? extends BreezeEvent> eventType();
-    }
+  <T extends BreezeEvent> void publish(T event);
 }

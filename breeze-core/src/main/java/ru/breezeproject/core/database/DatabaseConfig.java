@@ -10,7 +10,7 @@ public record DatabaseConfig(
     String user,
     String password,
     int poolSize) {
-  public static DatabaseConfig fromConfig(FileConfiguration config) {
+  public static DatabaseConfig fromConfig(final FileConfiguration config) {
     return new DatabaseConfig(config.getString("database.type", "mysql"),
         config.getString("database.host", "localhost"),
         config.getInt("database.port", 3306),

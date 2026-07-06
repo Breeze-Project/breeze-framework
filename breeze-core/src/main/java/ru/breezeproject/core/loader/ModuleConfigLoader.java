@@ -12,14 +12,12 @@ import ru.breezeproject.api.config.ModuleConfig;
 import ru.breezeproject.core.config.YamlModuleConfig;
 
 public class ModuleConfigLoader {
-  public ModuleConfig loadOrCreate(JarFile jar, Path moduleDataFolder) throws Exception {
-    if (!Files.exists(moduleDataFolder)) {
-      Files.createDirectories(moduleDataFolder);
-    }
+  public ModuleConfig loadOrCreate(final JarFile jar, final Path moduleDataFolder) throws Exception {
+    Files.createDirectories(moduleDataFolder);
 
-    Path configFile = moduleDataFolder.resolve("config.yml");
+    final Path configFile = moduleDataFolder.resolve("config.yml");
     if (!Files.exists(configFile)) {
-      JarEntry defaultConfigEntry = jar.getJarEntry("config.yml");
+      final JarEntry defaultConfigEntry = jar.getJarEntry("config.yml");
       if (defaultConfigEntry != null) {
         try (InputStream in = jar.getInputStream(defaultConfigEntry)) {
           Files.copy(in, configFile);

@@ -75,12 +75,8 @@ public class BreezeCoreBootstrap {
     if (initTask != null) {
       initTask.cancel();
     }
-    if (moduleManager != null) {
-      moduleManager.unloadAll();
-    }
-    if (databaseService != null) {
-      databaseService.shutdown();
-    }
+    moduleManager.unloadAll();
+    databaseService.shutdown();
   }
 
   public ModuleManager getModuleManager() {

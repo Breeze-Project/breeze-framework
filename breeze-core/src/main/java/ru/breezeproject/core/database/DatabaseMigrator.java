@@ -1,26 +1,27 @@
 package ru.breezeproject.core.database;
 
-import org.flywaydb.core.Flyway;
-import org.flywaydb.core.api.output.MigrateResult;
+import java.util.logging.Logger;
 
 import javax.sql.DataSource;
-import java.util.logging.Logger;
+
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.output.MigrateResult;
 
 public class DatabaseMigrator {
   private final Logger logger;
 
-  public DatabaseMigrator(Logger logger) {
+  public DatabaseMigrator(final Logger logger) {
     this.logger = logger;
   }
 
-  public void migrate(DataSource dataSource, DatabaseVendor vendor) {
-    Flyway flyway = Flyway.configure(getClass().getClassLoader())
+  public void migrate(final DataSource dataSource, final DatabaseVendor vendor) {
+    final Flyway flyway = Flyway.configure(getClass().getClassLoader())
         .dataSource(dataSource)
         .locations(vendor.migrationsLocation())
         .baselineOnMigrate(true)
         .load();
 
-    MigrateResult result = flyway.migrate();
+    final MigrateResult result = flyway.migrate();
 
     if (result.success) {
       if (result.migrationsExecuted == 0) {

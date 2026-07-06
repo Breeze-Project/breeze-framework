@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 
@@ -22,7 +23,6 @@ import ru.breezeproject.core.command.DynamicCommandRegistrar;
 import ru.breezeproject.core.context.BreezeModuleContextImpl;
 
 public class ModuleLoader implements ModuleManager {
-
   private final Path directory;
   private final Path dataRoot;
   private final ServiceRegistry serviceRegistry;
@@ -55,9 +55,7 @@ public class ModuleLoader implements ModuleManager {
     this.configLoader = new ModuleConfigLoader();
 
     try {
-      if (!Files.exists(directory)) {
-        Files.createDirectories(directory);
-      }
+      Files.createDirectories(directory);
     } catch (final Exception e) {
       throw new IllegalStateException("Could not create modules directory", e);
     }
@@ -111,17 +109,19 @@ public class ModuleLoader implements ModuleManager {
 
   @Override
   public Map<String, BreezeModule> getLoadedModules() {
-    return loadedModules;
+    return Map.copyOf(loadedModules);
   }
 
   private void loadModule(final Path file) throws Exception {
     try (JarFile jar = new JarFile(file.toFile())) {
-      final ModuleDescription descriptor = descriptorReader.read(jar);
+      final Optional<ModuleDescription> descriptorOpt = descriptorReader.read(jar);
 
-      if (descriptor == null) {
+      if (descriptorOpt.isEmpty()) {
         logger.warning("Skipping " + file.getFileName() + ": missing module.yml");
         return;
       }
+
+      final ModuleDescription descriptor = descriptorOpt.get();
       if (descriptor.main() == null || descriptor.name() == null) {
         logger.warning("Skipping " + file.getFileName() + ": module.yml must declare 'main' and 'name'");
         return;
