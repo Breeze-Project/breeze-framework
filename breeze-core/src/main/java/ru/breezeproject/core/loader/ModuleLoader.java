@@ -1,6 +1,7 @@
 package ru.breezeproject.core.loader;
 
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.Plugin;
 import ru.breezeproject.api.BreezeApiVersion;
 import ru.breezeproject.api.event.EventBus;
 import ru.breezeproject.api.module.BreezeModule;
@@ -32,6 +33,7 @@ public class ModuleLoader {
     private final SimpleEventBus eventBus;
     private final Logger logger;
     private final DynamicCommandRegistrar commandRegistrar;
+    private final Plugin ownerPlugin;
 
     private final Map<String, BreezeModule> loadedModules = new LinkedHashMap<>();
     private final Map<String, URLClassLoader> classLoaders = new LinkedHashMap<>();
@@ -39,12 +41,13 @@ public class ModuleLoader {
     private final Map<String, File> sourceFiles = new LinkedHashMap<>();
     private final Map<String, BreezeModuleContextImpl> moduleContexts = new LinkedHashMap<>();
 
-    public ModuleLoader(File pluginDataFolder, ServiceRegistry serviceRegistry, Logger logger) {
+    public ModuleLoader(File pluginDataFolder, ServiceRegistry serviceRegistry, Logger logger, Plugin ownerPlugin) {
         this.directory = new File(pluginDataFolder, "modules");
         this.dataRoot = new File(pluginDataFolder, "modules/data");
         this.serviceRegistry = serviceRegistry;
         this.eventBus = new SimpleEventBus(logger);
         this.logger = logger;
+        this.ownerPlugin = ownerPlugin;
         if (!directory.exists()) {
             directory.mkdirs();
         }
@@ -151,6 +154,7 @@ public class ModuleLoader {
                     eventBus.scopedView(subscriptions),
                     moduleDataFolder,
                     commandRegistrar,
+                    ownerPlugin,
                     name
             );
 
@@ -204,8 +208,11 @@ public class ModuleLoader {
         }
 
         BreezeModuleContextImpl context = moduleContexts.remove(name);
-        if (context != null && commandRegistrar != null) {
-            context.unregisterAllCommands();
+        if (context != null) {
+            if (commandRegistrar != null) {
+                context.unregisterAllCommands();
+            }
+            context.unregisterAllListeners();
         }
 
         URLClassLoader loader = classLoaders.remove(name);

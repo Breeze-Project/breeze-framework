@@ -32,7 +32,7 @@ class ModuleLoaderTest {
     }
 
     private ModuleLoader newLoader(Path pluginDataFolder) {
-        return new ModuleLoader(pluginDataFolder.toFile(), new SimpleServiceRegistry(), Logger.getLogger("test"));
+        return new ModuleLoader(pluginDataFolder.toFile(), new SimpleServiceRegistry(), Logger.getLogger("test"), null);
     }
 
     private File buildModuleJar(Path dir, String jarName, String moduleName, String apiVersion) throws IOException {

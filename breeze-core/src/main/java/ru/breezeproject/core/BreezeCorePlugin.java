@@ -29,7 +29,7 @@ public final class BreezeCorePlugin extends JavaPlugin {
         }
 
         this.serviceRegistry = new SimpleServiceRegistry();
-        this.moduleLoader = new ModuleLoader(getDataFolder(), serviceRegistry, getLogger());
+        this.moduleLoader = new ModuleLoader(getDataFolder(), serviceRegistry, getLogger(), this);
         this.moduleLoader.loadAll();
 
         PluginCommand cmd = getCommand("breezemodules");

@@ -1,8 +1,12 @@
 package ru.breezeproject.core.context;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.event.HandlerList;
+import org.bukkit.event.Listener;
+import org.bukkit.plugin.Plugin;
 import ru.breezeproject.api.event.EventBus;
 import ru.breezeproject.api.module.BreezeModuleContext;
 import ru.breezeproject.api.service.ServiceRegistry;
@@ -18,15 +22,18 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     private final EventBus eventBus;
     private final File dataFolder;
     private final DynamicCommandRegistrar commandRegistrar;
+    private final Plugin ownerPlugin;
     private final String moduleName;
     private final List<Command> registeredCommands = new ArrayList<>();
+    private final List<Listener> registeredListeners = new ArrayList<>();
 
     public BreezeModuleContextImpl(ServiceRegistry serviceRegistry, EventBus eventBus, File dataFolder,
-                                    DynamicCommandRegistrar commandRegistrar, String moduleName) {
+                                    DynamicCommandRegistrar commandRegistrar, Plugin ownerPlugin, String moduleName) {
         this.serviceRegistry = serviceRegistry;
         this.eventBus = eventBus;
         this.dataFolder = dataFolder;
         this.commandRegistrar = commandRegistrar;
+        this.ownerPlugin = ownerPlugin;
         this.moduleName = moduleName;
         if (!dataFolder.exists()) {
             dataFolder.mkdirs();
@@ -56,8 +63,19 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
         registeredCommands.add(command);
     }
 
+    @Override
+    public void registerListener(Listener listener) {
+        Bukkit.getPluginManager().registerEvents(listener, ownerPlugin);
+        registeredListeners.add(listener);
+    }
+
     public void unregisterAllCommands() {
         registeredCommands.forEach(commandRegistrar::unregister);
         registeredCommands.clear();
+    }
+
+    public void unregisterAllListeners() {
+        registeredListeners.forEach(HandlerList::unregisterAll);
+        registeredListeners.clear();
     }
 }
