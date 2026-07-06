@@ -12,7 +12,7 @@ public interface EventBus {
 
     <T extends BreezeEvent> void publish(T event);
 
-    interface Subscription {
+    public interface Subscription {
         Class<? extends BreezeEvent> eventType();
     }
 }

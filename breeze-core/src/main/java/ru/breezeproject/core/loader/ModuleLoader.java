@@ -1,239 +1,198 @@
 package ru.breezeproject.core.loader;
 
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.Plugin;
-import ru.breezeproject.api.BreezeApiVersion;
-import ru.breezeproject.api.event.EventBus;
-import ru.breezeproject.api.module.BreezeModule;
-import ru.breezeproject.core.context.BreezeModuleContextImpl;
-import ru.breezeproject.core.command.DynamicCommandRegistrar;
-import ru.breezeproject.api.service.ServiceRegistry;
-import ru.breezeproject.core.event.SimpleEventBus;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 
-public class ModuleLoader {
+import org.bukkit.plugin.java.JavaPlugin;
 
-    private final File directory;
-    private final File dataRoot;
-    private final ServiceRegistry serviceRegistry;
-    private final SimpleEventBus eventBus;
-    private final Logger logger;
-    private final DynamicCommandRegistrar commandRegistrar;
-    private final Plugin ownerPlugin;
+import ru.breezeproject.api.BreezeApiVersion;
+import ru.breezeproject.api.config.ModuleConfig;
+import ru.breezeproject.api.event.EventBus;
+import ru.breezeproject.api.module.BreezeModule;
+import ru.breezeproject.api.module.ModuleDescription;
+import ru.breezeproject.api.service.ServiceRegistry;
+import ru.breezeproject.core.command.DynamicCommandRegistrar;
+import ru.breezeproject.core.context.BreezeModuleContextImpl;
 
-    private final Map<String, BreezeModule> loadedModules = new LinkedHashMap<>();
-    private final Map<String, URLClassLoader> classLoaders = new LinkedHashMap<>();
-    private final Map<String, List<EventBus.Subscription>> moduleSubscriptions = new LinkedHashMap<>();
-    private final Map<String, File> sourceFiles = new LinkedHashMap<>();
-    private final Map<String, BreezeModuleContextImpl> moduleContexts = new LinkedHashMap<>();
+public class ModuleLoader implements ModuleManager {
 
-    public ModuleLoader(File pluginDataFolder, ServiceRegistry serviceRegistry, Logger logger, Plugin ownerPlugin) {
-        this.directory = new File(pluginDataFolder, "modules");
-        this.dataRoot = new File(pluginDataFolder, "modules/data");
-        this.serviceRegistry = serviceRegistry;
-        this.eventBus = new SimpleEventBus(logger);
-        this.logger = logger;
-        this.ownerPlugin = ownerPlugin;
-        if (!directory.exists()) {
-            directory.mkdirs();
-        }
+  private final Path directory;
+  private final Path dataRoot;
+  private final ServiceRegistry serviceRegistry;
+  private final EventBus eventBus;
+  private final Logger logger;
+  private final DynamicCommandRegistrar commandRegistrar;
+  private final JavaPlugin ownerPlugin;
+  private final ModuleDescriptorReader descriptorReader;
+  private final ModuleConfigLoader configLoader;
 
-        DynamicCommandRegistrar registrar;
-        try {
-            registrar = new DynamicCommandRegistrar(logger);
-        } catch (Exception e) {
-            logger.severe("Could not access Bukkit's CommandMap; modules won't be able to register commands: "
-                    + e.getMessage());
-            registrar = null;
-        }
-        this.commandRegistrar = registrar;
+  private final Map<String, BreezeModule> loadedModules = new LinkedHashMap<>();
+  private final Map<String, URLClassLoader> classLoaders = new LinkedHashMap<>();
+  private final Map<String, Path> sourceFiles = new LinkedHashMap<>();
+  private final Map<String, BreezeModuleContextImpl> moduleContexts = new LinkedHashMap<>();
+
+  public ModuleLoader(final Path pluginDataFolder,
+      final ServiceRegistry serviceRegistry,
+      final EventBus eventBus,
+      final Logger logger,
+      final JavaPlugin ownerPlugin,
+      final DynamicCommandRegistrar commandRegistrar) {
+    this.directory = pluginDataFolder.resolve("modules");
+    this.dataRoot = pluginDataFolder.resolve("modules/data");
+    this.serviceRegistry = serviceRegistry;
+    this.eventBus = eventBus;
+    this.logger = logger;
+    this.ownerPlugin = ownerPlugin;
+    this.commandRegistrar = commandRegistrar;
+    this.descriptorReader = new ModuleDescriptorReader();
+    this.configLoader = new ModuleConfigLoader();
+
+    try {
+      if (!Files.exists(directory)) {
+        Files.createDirectories(directory);
+      }
+    } catch (final Exception e) {
+      throw new IllegalStateException("Could not create modules directory", e);
     }
+  }
 
-    public void loadAll() {
-        File[] files = directory.listFiles((dir, name) -> name.endsWith(".jar"));
-        if (files == null) {
-            return;
-        }
-
-        for (File file : files) {
+  @Override
+  public void loadAll() {
+    try {
+      Files.list(directory)
+          .filter(p -> p.toString().endsWith(".jar"))
+          .forEach(file -> {
             try {
-                loadModule(file);
-            } catch (Exception e) {
-                logger.severe("Failed to load module from " + file.getName() + ": " + e.getMessage());
+              loadModule(file);
+            } catch (final Exception e) {
+              logger.severe("Failed to load module from " + file.getFileName() + ": " + e.getMessage());
             }
-        }
+          });
+    } catch (final Exception e) {
+      logger.severe("Failed to list module directory: " + e.getMessage());
+    }
+  }
+
+  @Override
+  public boolean reload(final String name) {
+    final Path file = sourceFiles.get(name);
+    if (file == null) {
+      return false;
     }
 
-    public boolean reload(String name) {
-        File file = sourceFiles.get(name);
-        if (file == null) {
-            return false;
-        }
+    unloadModule(name);
 
-        unloadModule(name);
-
-        if (!file.exists()) {
-            logger.severe("Cannot reload '" + name + "': jar file " + file.getName() + " no longer exists on disk.");
-            return false;
-        }
-
-        try {
-            loadModule(file);
-        } catch (Exception e) {
-            logger.severe("Failed to reload module '" + name + "': " + e.getMessage());
-            return false;
-        }
-        return true;
+    if (!Files.exists(file)) {
+      logger.severe("Cannot reload '" + name + "': jar file " + file.getFileName() + " no longer exists on disk.");
+      return false;
     }
 
-    private void loadModule(File file) throws Exception {
-        String mainClassPath;
-        String name;
-        String declaredApiVersion;
+    try {
+      loadModule(file);
+    } catch (final Exception e) {
+      logger.severe("Failed to reload module '" + name + "': " + e.getMessage());
+      return false;
+    }
+    return true;
+  }
 
-        try (JarFile jar = new JarFile(file)) {
-            JarEntry descriptorEntry = jar.getJarEntry("module.yml");
-            if (descriptorEntry == null) {
-                logger.warning("Skipping " + file.getName() + ": missing module.yml");
-                return;
-            }
+  @Override
+  public void unloadAll() {
+    new ArrayList<>(loadedModules.keySet()).forEach(this::unloadModule);
+    sourceFiles.clear();
+  }
 
-            YamlConfiguration descriptor = YamlConfiguration.loadConfiguration(
-                    new InputStreamReader(jar.getInputStream(descriptorEntry), StandardCharsets.UTF_8)
-            );
+  @Override
+  public Map<String, BreezeModule> getLoadedModules() {
+    return loadedModules;
+  }
 
-            mainClassPath = descriptor.getString("main");
-            name = descriptor.getString("name");
-            declaredApiVersion = descriptor.getString("api-version");
+  private void loadModule(final Path file) throws Exception {
+    try (JarFile jar = new JarFile(file.toFile())) {
+      final ModuleDescription descriptor = descriptorReader.read(jar);
 
-            if (mainClassPath == null || name == null) {
-                logger.warning("Skipping " + file.getName() + ": module.yml must declare 'main' and 'name'");
-                return;
-            }
+      if (descriptor == null) {
+        logger.warning("Skipping " + file.getFileName() + ": missing module.yml");
+        return;
+      }
+      if (descriptor.main() == null || descriptor.name() == null) {
+        logger.warning("Skipping " + file.getFileName() + ": module.yml must declare 'main' and 'name'");
+        return;
+      }
+      if (loadedModules.containsKey(descriptor.name())) {
+        logger.warning("Duplicate module name '" + descriptor.name() + "', skipping " + file.getFileName());
+        return;
+      }
+      if (!BreezeApiVersion.isCompatible(descriptor.apiVersion())) {
+        logger.severe("Skipping module '" + descriptor.name() + "': declares api-version '"
+            + descriptor.apiVersion() + "' which is incompatible with the running breeze-api "
+            + BreezeApiVersion.CURRENT + ".");
+        return;
+      }
 
-            if (loadedModules.containsKey(name)) {
-                logger.warning("Duplicate module name '" + name + "', skipping " + file.getName());
-                return;
-            }
+      final Path moduleDataFolder = dataRoot.resolve(descriptor.name());
+      final ModuleConfig runtimeConfig = configLoader.loadOrCreate(jar, moduleDataFolder);
 
-            if (!BreezeApiVersion.isCompatible(declaredApiVersion)) {
-                logger.severe("Skipping module '" + name + "': declares api-version '" + declaredApiVersion
-                        + "' which is incompatible with the running breeze-api "
-                        + BreezeApiVersion.CURRENT + ". Rebuild the module against a supported API version.");
-                return;
-            }
+      final URLClassLoader moduleLoader = new URLClassLoader(
+          new URL[] { file.toUri().toURL() },
+          this.getClass().getClassLoader());
 
-            File moduleDataFolder = new File(dataRoot, name);
-            YamlConfiguration runtimeConfig = loadOrCreateModuleConfig(jar, moduleDataFolder);
+      final BreezeModule module = instantiateModule(moduleLoader, descriptor.main());
 
-            URLClassLoader moduleLoader = new URLClassLoader(
-                    new URL[]{file.toURI().toURL()},
-                    this.getClass().getClassLoader()
-            );
+      final BreezeModuleContextImpl context = new BreezeModuleContextImpl(
+          serviceRegistry,
+          eventBus,
+          moduleDataFolder,
+          commandRegistrar,
+          ownerPlugin,
+          descriptor.name());
 
-            Class<?> clazz = Class.forName(mainClassPath, true, moduleLoader);
-            BreezeModule module = (BreezeModule) clazz.getDeclaredConstructor().newInstance();
+      module.init(descriptor.name(), runtimeConfig, Logger.getLogger(descriptor.name()), context);
+      module.onEnable();
 
-            List<EventBus.Subscription> subscriptions = new ArrayList<>();
-            BreezeModuleContextImpl context = new BreezeModuleContextImpl(
-                    serviceRegistry,
-                    eventBus.scopedView(subscriptions),
-                    moduleDataFolder,
-                    commandRegistrar,
-                    ownerPlugin,
-                    name
-            );
+      loadedModules.put(descriptor.name(), module);
+      classLoaders.put(descriptor.name(), moduleLoader);
+      sourceFiles.put(descriptor.name(), file);
+      moduleContexts.put(descriptor.name(), context);
 
-            module.init(name, runtimeConfig, Logger.getLogger(name), context);
-            module.onEnable();
+      logger.info("Loaded module '" + descriptor.name() + "' (" + descriptor.version() + ")");
+    }
+  }
 
-            loadedModules.put(name, module);
-            classLoaders.put(name, moduleLoader);
-            moduleSubscriptions.put(name, subscriptions);
-            sourceFiles.put(name, file);
-            moduleContexts.put(name, context);
+  private BreezeModule instantiateModule(final URLClassLoader loader, final String mainClass) throws Exception {
+    final Class<?> clazz = Class.forName(mainClass, true, loader);
+    return (BreezeModule) clazz.getDeclaredConstructor().newInstance();
+  }
 
-            logger.info("Loaded module '" + name + "' (" + descriptor.getString("version", "?") + ")");
-        }
+  private void unloadModule(final String name) {
+    final BreezeModule module = loadedModules.remove(name);
+    if (module != null) {
+      try {
+        module.onDisable();
+      } catch (final Exception e) {
+        logger.severe("Error disabling module '" + name + "': " + e.getMessage());
+      }
     }
 
-    private YamlConfiguration loadOrCreateModuleConfig(JarFile jar, File moduleDataFolder) throws Exception {
-        if (!moduleDataFolder.exists()) {
-            moduleDataFolder.mkdirs();
-        }
-
-        File configFile = new File(moduleDataFolder, "config.yml");
-        if (!configFile.exists()) {
-            JarEntry defaultConfigEntry = jar.getJarEntry("config.yml");
-            if (defaultConfigEntry != null) {
-                try (InputStream in = jar.getInputStream(defaultConfigEntry);
-                     FileOutputStream out = new FileOutputStream(configFile)) {
-                    in.transferTo(out);
-                }
-            } else {
-                configFile.createNewFile();
-            }
-        }
-
-        return YamlConfiguration.loadConfiguration(configFile);
+    final BreezeModuleContextImpl context = moduleContexts.remove(name);
+    if (context != null) {
+      context.cleanup();
     }
 
-    private void unloadModule(String name) {
-        BreezeModule module = loadedModules.remove(name);
-        if (module != null) {
-            try {
-                module.onDisable();
-            } catch (Exception e) {
-                logger.severe("Error disabling module '" + name + "': " + e.getMessage());
-            }
-        }
-
-        List<EventBus.Subscription> subscriptions = moduleSubscriptions.remove(name);
-        if (subscriptions != null) {
-            eventBus.unsubscribeAll(subscriptions);
-        }
-
-        BreezeModuleContextImpl context = moduleContexts.remove(name);
-        if (context != null) {
-            if (commandRegistrar != null) {
-                context.unregisterAllCommands();
-            }
-            context.unregisterAllListeners();
-        }
-
-        URLClassLoader loader = classLoaders.remove(name);
-        if (loader != null) {
-            try {
-                loader.close();
-            } catch (Exception ignored) {
-            }
-        }
+    final URLClassLoader loader = classLoaders.remove(name);
+    if (loader != null) {
+      try {
+        loader.close();
+      } catch (final Exception e) {
+        logger.warning("Could not close classloader for module '" + name + "': " + e.getMessage());
+      }
     }
-
-    public void unloadAll() {
-        new ArrayList<>(loadedModules.keySet()).forEach(this::unloadModule);
-        sourceFiles.clear();
-    }
-
-    public Map<String, BreezeModule> getLoadedModules() {
-        return loadedModules;
-    }
-
-    public SimpleEventBus getEventBus() {
-        return eventBus;
-    }
+  }
 }

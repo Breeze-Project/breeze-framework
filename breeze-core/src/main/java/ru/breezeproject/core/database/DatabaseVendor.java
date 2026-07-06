@@ -44,7 +44,7 @@ public enum DatabaseVendor {
         return "rollback/" + configKey;
     }
 
-    public static DatabaseVendor fromConfigValue(String value, java.util.logging.Logger logger) {
+    public static DatabaseVendor fromConfigValue(String value) {
         if (value == null || value.isBlank()) {
             return MYSQL;
         }
@@ -53,8 +53,6 @@ public enum DatabaseVendor {
                 return vendor;
             }
         }
-        logger.warning("Unknown database.type '" + value + "', falling back to mysql. "
-                + "Supported values: mysql, postgresql.");
-        return MYSQL;
+        throw new IllegalArgumentException("Unknown database.type '" + value + "'. Supported values: mysql, postgresql");
     }
 }
