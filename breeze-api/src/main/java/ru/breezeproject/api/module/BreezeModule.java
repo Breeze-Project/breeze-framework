@@ -1,7 +1,10 @@
 package ru.breezeproject.api.module;
 
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.logging.Logger;
 
 public abstract class BreezeModule {
@@ -45,5 +48,17 @@ public abstract class BreezeModule {
 
     public final BreezeModuleContext getContext() {
         return context;
+    }
+
+    public final void saveConfig() {
+        try {
+            config.save(new File(context.getDataFolder(), "config.yml"));
+        } catch (IOException e) {
+            logger.severe("Could not save config.yml for module '" + name + "': " + e.getMessage());
+        }
+    }
+
+    public final void reloadConfig() {
+        this.config = YamlConfiguration.loadConfiguration(new File(context.getDataFolder(), "config.yml"));
     }
 }

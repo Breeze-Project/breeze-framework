@@ -28,33 +28,33 @@ public class ModulesCommand implements CommandExecutor {
 
     private boolean listModules(CommandSender sender) {
         if (!sender.hasPermission(PERMISSION_LIST)) {
-            sender.sendMessage(ChatColor.RED + "У тебя нету прав сделать это.");
+            sender.sendMessage(ChatColor.RED + "You don't have permission to do that.");
             return true;
         }
 
         if (moduleLoader.getLoadedModules().isEmpty()) {
-            sender.sendMessage(ChatColor.YELLOW + "Нету загруженных модулей.");
+            sender.sendMessage(ChatColor.YELLOW + "No modules loaded.");
             return true;
         }
 
-        sender.sendMessage(ChatColor.AQUA + "Загруженные BreezeCore модули:");
+        sender.sendMessage(ChatColor.AQUA + "Loaded BreezeCore modules:");
         for (BreezeModule module : moduleLoader.getLoadedModules().values()) {
             sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + module.getName());
         }
         if (sender.hasPermission(PERMISSION_RELOAD)) {
-            sender.sendMessage(ChatColor.DARK_GRAY + "Используй /breezemodules reload <name> чтобы перезагрузить модуль.");
+            sender.sendMessage(ChatColor.DARK_GRAY + "Use /breezemodules reload <name> to reload a single module.");
         }
         return true;
     }
 
     private boolean handleReload(CommandSender sender, String[] args) {
         if (!sender.hasPermission(PERMISSION_RELOAD)) {
-            sender.sendMessage(ChatColor.RED + "У тебя нету прав на это.");
+            sender.sendMessage(ChatColor.RED + "You don't have permission to reload modules.");
             return true;
         }
 
         if (args.length < 2) {
-            sender.sendMessage(ChatColor.RED + "Используй: /breezemodules reload <name>");
+            sender.sendMessage(ChatColor.RED + "Usage: /breezemodules reload <name>");
             return true;
         }
 
@@ -62,10 +62,10 @@ public class ModulesCommand implements CommandExecutor {
         boolean success = moduleLoader.reload(name);
 
         if (success) {
-            sender.sendMessage(ChatColor.GREEN + "Перезагрузка модуля '" + name + "'.");
+            sender.sendMessage(ChatColor.GREEN + "Reloaded module '" + name + "'.");
         } else {
-            sender.sendMessage(ChatColor.RED + "Нет загруженного модуля с именем '" + name
-                    + "' (Имена чувствительны к регистру; проверьте /breezemodules).");
+            sender.sendMessage(ChatColor.RED + "No loaded module named '" + name
+                    + "' (names are case-sensitive; check /breezemodules).");
         }
         return true;
     }

@@ -5,7 +5,6 @@ buildscript {
     dependencies {
         classpath("org.flywaydb:flyway-mysql:10.15.0")
         classpath("org.postgresql:postgresql:42.7.3")
-        classpath("org.flywaydb:flyway-database-postgresql:10.15.0")
     }
 }
 

@@ -3,24 +3,24 @@ version: '${version}'
 main: ru.breezeproject.core.BreezeCorePlugin
 api-version: '1.21'
 author: BreezeProject
-description: Основной загрузчик и реестр служб для модулей BreezeCore.
+description: Core loader and service registry for BreezeCore modules.
 
 commands:
   breezemodules:
-    description: Выводит список загруженных модулей или перезагружает один из них.
+    description: Lists loaded modules, or reloads a single one.
     usage: /breezemodules [reload <name>]
     aliases: [bmodules, bcmodules]
     permission: breeze.modules.list
 
 permissions:
   breeze.modules.list:
-    description: Позволяет выводить список загруженных в данный момент модулей BreezeCore.
+    description: Allows listing currently loaded BreezeCore modules.
     default: op
   breeze.modules.reload:
-    description: Позволяет перезагрузить один модуль BreezeCore с диска.
+    description: Allows reloading a single BreezeCore module from disk.
     default: op
   breeze.admin.*:
-    description: Предоставляет все права администратора BreezeCore.
+    description: Grants all BreezeCore admin permissions.
     default: op
     children:
       breeze.modules.list: true

@@ -2,7 +2,7 @@ package ru.breezeproject.api;
 
 public final class BreezeApiVersion {
 
-    public static final String CURRENT = "1.0.0";
+    public static final String CURRENT = "1.1.0";
 
     private BreezeApiVersion() {
     }
