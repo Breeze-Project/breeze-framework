@@ -29,12 +29,20 @@ jobs:
         run: ./gradlew :breeze-api:test
 
       - name: Build breeze-core
-        run: ./gradlew :breeze-core:build
+        run: ./gradlew :breeze-core:build --stacktrace
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
 
+      - name: Upload breeze-core test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: breeze-core-test-report
+          path: breeze-core/build/reports/tests/test
+          retention-days: 14
+
       - name: Test breeze-core
-        run: ./gradlew :breeze-core:test
+        run: ./gradlew :breeze-core:test --stacktrace
 
       - name: Verify breeze-api publishes without breeze-core
         run: ./gradlew :breeze-api:publishToMavenLocal
