@@ -6,4 +6,6 @@ public interface BreezeCommandSender {
   void sendMessage(String message);
 
   boolean hasPermission(String permission);
+
+  Object getHandle();
 }

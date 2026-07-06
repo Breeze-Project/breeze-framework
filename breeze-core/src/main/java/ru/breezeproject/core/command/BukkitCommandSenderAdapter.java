@@ -25,4 +25,9 @@ public class BukkitCommandSenderAdapter implements BreezeCommandSender {
   public boolean hasPermission(String permission) {
     return sender.hasPermission(permission);
   }
+
+  @Override
+  public Object getHandle() {
+    return sender;
+  }
 }

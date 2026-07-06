@@ -109,6 +109,11 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     registeredListeners.clear();
   }
 
+  @Override
+  public Object getOwnerPluginHandle() {
+    return ownerPlugin;
+  }
+
   private static final class TrackingEventBus implements EventBus {
     private final EventBus delegate;
     private final List<Subscription> sink;

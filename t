@@ -1,8 +1,6 @@
 package ru.breezeproject.api.config;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 
 public interface ModuleConfig {
   String getString(String path);
@@ -13,21 +11,9 @@ public interface ModuleConfig {
 
   int getInt(String path, int def);
 
-  double getDouble(String path);
-
-  double getDouble(String path, double def);
-
   boolean getBoolean(String path);
 
   boolean getBoolean(String path, boolean def);
-
-  List<?> getList(String path);
-
-  List<String> getStringList(String path);
-
-  Set<String> getKeys();
-
-  ModuleConfig getSection(String path);
 
   void save() throws IOException;
 
