@@ -20,4 +20,6 @@ public interface BreezeModuleContext {
       String usage, ModuleCommandExecutor executor, ModuleTabCompleter tabCompleter);
 
   void registerListener(BreezeListener listener);
+
+  Object getOwnerPluginHandle();
 }

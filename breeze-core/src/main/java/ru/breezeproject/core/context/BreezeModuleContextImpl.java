@@ -138,6 +138,11 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     registeredListeners.add(bukkitListener);
   }
 
+  @Override
+  public Object getOwnerPluginHandle() {
+    return ownerPlugin;
+  }
+
   public void cleanup() {
     subscriptions.forEach(delegateBus::unsubscribe);
     subscriptions.clear();
