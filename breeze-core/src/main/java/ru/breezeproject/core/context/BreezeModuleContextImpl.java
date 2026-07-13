@@ -148,6 +148,7 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     subscriptions.clear();
     registeredCommands.forEach(commandRegistrar::unregister);
     registeredCommands.clear();
+    commandRegistrar.syncCommands();
     registeredListeners.forEach(HandlerList::unregisterAll);
     registeredListeners.clear();
   }

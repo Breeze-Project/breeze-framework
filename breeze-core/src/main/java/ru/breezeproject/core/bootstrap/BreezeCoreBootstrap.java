@@ -1,5 +1,6 @@
 package ru.breezeproject.core.bootstrap;
 
+import java.nio.file.Path;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
@@ -30,6 +31,7 @@ public class BreezeCoreBootstrap {
   private final CoreCommandRegistrar commandRegistrar;
 
   private BukkitTask initTask;
+  private BukkitTask moduleScanTask;
 
   public BreezeCoreBootstrap(final JavaPlugin plugin) {
     this.plugin = plugin;
@@ -40,8 +42,10 @@ public class BreezeCoreBootstrap {
     this.databaseService = new DatabaseServiceImpl(logger);
 
     final DynamicCommandRegistrar dynamicRegistrar = createCommandRegistrar(logger);
+    final Path modulesDirectory = resolveModulesDirectory(plugin);
 
     this.moduleManager = new ModuleLoader(
+        modulesDirectory,
         plugin.getDataFolder().toPath(),
         serviceRegistry,
         eventBus,
@@ -75,6 +79,10 @@ public class BreezeCoreBootstrap {
     if (initTask != null) {
       initTask.cancel();
     }
+    if (moduleScanTask != null) {
+      moduleScanTask.cancel();
+      moduleScanTask = null;
+    }
     moduleManager.unloadAll();
     databaseService.shutdown();
   }
@@ -98,7 +106,31 @@ public class BreezeCoreBootstrap {
   private void onPostDatabaseInit() {
     moduleManager.loadAll();
     commandRegistrar.registerAll();
+    startModuleScanTask();
     logger.info("BreezeCore enabled, " + moduleManager.getLoadedModules().size() + " module(s) loaded.");
+  }
+
+  private void startModuleScanTask() {
+    final FileConfiguration config = plugin.getConfig();
+    if (!config.getBoolean("modules.auto_scan.enabled", true)) {
+      return;
+    }
+
+    final long intervalSeconds = Math.max(5L, config.getLong("modules.auto_scan.interval_seconds", 30));
+    final long settleMs = Math.max(500L, config.getLong("modules.copy_settle_ms", 2000));
+    final long intervalTicks = intervalSeconds * 20L;
+
+    moduleScanTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+      final int loaded = moduleManager.scanForNewModules(settleMs);
+      if (loaded > 0) {
+        logger.info("Auto-scan loaded " + loaded + " new module(s).");
+      }
+    }, intervalTicks, intervalTicks);
+  }
+
+  private Path resolveModulesDirectory(final JavaPlugin plugin) {
+    final String configuredDirectory = plugin.getConfig().getString("modules.directory", "modules");
+    return plugin.getDataFolder().toPath().resolve(configuredDirectory);
   }
 
   private DynamicCommandRegistrar createCommandRegistrar(final Logger logger) {

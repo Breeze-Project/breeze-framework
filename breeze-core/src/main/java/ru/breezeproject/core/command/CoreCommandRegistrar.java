@@ -24,6 +24,8 @@ public class CoreCommandRegistrar {
     if (cmd == null) {
       throw new IllegalStateException("Command 'breezemodules' not defined in plugin.yml");
     }
-    cmd.setExecutor(new ModulesCommand(moduleManager));
+    final ModulesCommand modulesCommand = new ModulesCommand(moduleManager);
+    cmd.setExecutor(modulesCommand);
+    cmd.setTabCompleter(modulesCommand);
   }
 }

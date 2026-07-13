@@ -7,17 +7,26 @@ description: Core loader and service registry for BreezeCore modules.
 
 commands:
   breezemodules:
-    description: Lists loaded modules, or reloads a single one.
-    usage: /breezemodules [reload <name>]
+    description: Manage BreezeCore modules.
+    usage: /breezemodules [load|reload|enable|disable] [name]
     aliases: [bmodules, bcmodules]
     permission: breeze.modules.list
 
 permissions:
   breeze.modules.list:
-    description: Allows listing currently loaded BreezeCore modules.
+    description: Allows listing BreezeCore modules.
     default: op
   breeze.modules.reload:
-    description: Allows reloading a single BreezeCore module from disk.
+    description: Allows reloading a loaded module from disk.
+    default: op
+  breeze.modules.load:
+    description: Allows loading new modules from disk without restarting the server.
+    default: op
+  breeze.modules.enable:
+    description: Allows enabling a disabled module.
+    default: op
+  breeze.modules.disable:
+    description: Allows disabling a loaded module.
     default: op
   breeze.admin.*:
     description: Grants all BreezeCore admin permissions.
@@ -25,3 +34,6 @@ permissions:
     children:
       breeze.modules.list: true
       breeze.modules.reload: true
+      breeze.modules.load: true
+      breeze.modules.enable: true
+      breeze.modules.disable: true

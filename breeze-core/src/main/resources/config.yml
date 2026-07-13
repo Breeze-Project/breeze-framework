@@ -10,3 +10,7 @@ database:
 
 modules:
   directory: modules
+  auto_scan:
+    enabled: true
+    interval_seconds: 30
+  copy_settle_ms: 2000

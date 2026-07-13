@@ -1,8 +1,12 @@
 package ru.breezeproject.core.command;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
@@ -43,7 +47,6 @@ public class DynamicCommandRegistrar {
   }
 
   private final CommandMap commandMap;
-
   private final Logger logger;
 
   public DynamicCommandRegistrar(final Logger logger) throws ReflectiveOperationException {
@@ -63,17 +66,70 @@ public class DynamicCommandRegistrar {
 
   public void unregister(final Command command) {
     command.unregister(commandMap);
+    purgeKnownCommands(command);
+  }
 
+  public void syncCommands() {
     try {
-      final Field knownCommandsField = commandMap.getClass().getDeclaredField("knownCommands");
-      knownCommandsField.setAccessible(true);
-      @SuppressWarnings("unchecked")
-	final
-      Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
-      knownCommands.values().removeIf(c -> c == command);
-    } catch (final Exception e) {
-      logger.warning(
-          "Could not fully unregister command '" + command.getName() + "' from knownCommands: " + e.getMessage());
+      final Method method = Bukkit.getServer().getClass().getMethod("syncCommands");
+      method.invoke(Bukkit.getServer());
+    } catch (final ReflectiveOperationException ignored) {
+    }
+  }
+
+  private void purgeKnownCommands(final Command command) {
+    final Map<String, Command> knownCommands = getKnownCommands();
+    if (knownCommands == null) {
+      return;
+    }
+
+    final Set<String> keysToRemove = new HashSet<>();
+    final String lowerName = command.getName().toLowerCase(Locale.ROOT);
+
+    for (final Map.Entry<String, Command> entry : knownCommands.entrySet()) {
+      if (entry.getValue() == command) {
+        keysToRemove.add(entry.getKey());
+        continue;
+      }
+
+      final String key = entry.getKey().toLowerCase(Locale.ROOT);
+      if (matchesCommandKey(key, lowerName, command.getAliases())) {
+        keysToRemove.add(entry.getKey());
+      }
+    }
+
+    for (final String key : keysToRemove) {
+      knownCommands.remove(key);
+    }
+  }
+
+  private boolean matchesCommandKey(final String key, final String lowerName, final List<String> aliases) {
+    if (key.equals(lowerName) || key.endsWith(":" + lowerName)) {
+      return true;
+    }
+    for (final String alias : aliases) {
+      final String lowerAlias = alias.toLowerCase(Locale.ROOT);
+      if (key.equals(lowerAlias) || key.endsWith(":" + lowerAlias)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private Map<String, Command> getKnownCommands() {
+    try {
+      return commandMap.getKnownCommands();
+    } catch (final Exception ignored) {
+      try {
+        final Field knownCommandsField = commandMap.getClass().getDeclaredField("knownCommands");
+        knownCommandsField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        final Map<String, Command> knownCommands = (Map<String, Command>) knownCommandsField.get(commandMap);
+        return knownCommands;
+      } catch (final Exception e) {
+        logger.warning("Could not access knownCommands: " + e.getMessage());
+        return null;
+      }
     }
   }
 }
