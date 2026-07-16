@@ -6,7 +6,7 @@ public final class BreezeApiVersion {
   private record Version(int major, int minor, int patch) {
   }
 
-  public static final String CURRENT = "1.5.0";
+  public static final String CURRENT = "1.6.0";
 
   public static boolean isCompatible(final String moduleApiVersion) {
     return parse(moduleApiVersion)
