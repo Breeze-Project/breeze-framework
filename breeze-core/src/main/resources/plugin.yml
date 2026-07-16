@@ -1,9 +1,10 @@
 name: BreezeCore
 version: '${version}'
 main: ru.breezeproject.core.BreezeCorePlugin
-api-version: '1.21'
+api-version: '1.21.11'
+folia-supported: true
 author: BreezeProject
-description: Core loader and service registry for BreezeCore modules.
+description: Core loader and service registry for BreezeCore modules on Canvas 1.21.11.
 
 commands:
   breezemodules:

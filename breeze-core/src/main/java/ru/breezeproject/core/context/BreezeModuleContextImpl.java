@@ -22,6 +22,7 @@ import ru.breezeproject.api.event.EventBus;
 import ru.breezeproject.api.event.EventBus.Subscription;
 import ru.breezeproject.api.event.EventPriority;
 import ru.breezeproject.api.module.BreezeModuleContext;
+import ru.breezeproject.api.schedule.BreezeScheduler;
 import ru.breezeproject.api.service.ServiceRegistry;
 import ru.breezeproject.core.command.BukkitCommandSenderAdapter;
 import ru.breezeproject.core.command.DynamicCommandRegistrar;
@@ -69,6 +70,7 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
   private final Path dataFolder;
   private final DynamicCommandRegistrar commandRegistrar;
   private final JavaPlugin ownerPlugin;
+  private final BreezeScheduler scheduler;
 
   private final String moduleName;
   private final List<Command> registeredCommands = new ArrayList<>();
@@ -81,6 +83,7 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
       final Path dataFolder,
       final DynamicCommandRegistrar commandRegistrar,
       final JavaPlugin ownerPlugin,
+      final BreezeScheduler scheduler,
       final String moduleName) {
     this.serviceRegistry = serviceRegistry;
     this.delegateBus = eventBus;
@@ -88,6 +91,7 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
     this.dataFolder = dataFolder;
     this.commandRegistrar = commandRegistrar;
     this.ownerPlugin = ownerPlugin;
+    this.scheduler = scheduler;
     this.moduleName = moduleName;
 
     try {
@@ -141,6 +145,11 @@ public class BreezeModuleContextImpl implements BreezeModuleContext {
   @Override
   public Object getOwnerPluginHandle() {
     return ownerPlugin;
+  }
+
+  @Override
+  public BreezeScheduler getScheduler() {
+    return scheduler;
   }
 
   public void cleanup() {

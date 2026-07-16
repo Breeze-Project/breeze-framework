@@ -3,12 +3,12 @@ package ru.breezeproject.core.bootstrap;
 import java.nio.file.Path;
 import java.util.logging.Logger;
 
-import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
 
 import ru.breezeproject.api.event.EventBus;
+import ru.breezeproject.api.schedule.BreezeScheduler;
+import ru.breezeproject.api.schedule.BreezeTask;
 import ru.breezeproject.api.service.ServiceRegistry;
 import ru.breezeproject.core.command.CoreCommandRegistrar;
 import ru.breezeproject.core.command.DynamicCommandRegistrar;
@@ -18,6 +18,7 @@ import ru.breezeproject.core.database.DatabaseServiceImpl;
 import ru.breezeproject.core.event.SimpleEventBus;
 import ru.breezeproject.core.loader.ModuleLoader;
 import ru.breezeproject.core.loader.ModuleManager;
+import ru.breezeproject.core.schedule.FoliaBreezeScheduler;
 import ru.breezeproject.core.service.SimpleServiceRegistry;
 
 public class BreezeCoreBootstrap {
@@ -26,12 +27,12 @@ public class BreezeCoreBootstrap {
 
   private final ServiceRegistry serviceRegistry;
   private final EventBus eventBus;
+  private final BreezeScheduler scheduler;
   private final DatabaseService databaseService;
   private final ModuleManager moduleManager;
   private final CoreCommandRegistrar commandRegistrar;
 
-  private BukkitTask initTask;
-  private BukkitTask moduleScanTask;
+  private BreezeTask moduleScanTask;
 
   public BreezeCoreBootstrap(final JavaPlugin plugin) {
     this.plugin = plugin;
@@ -39,7 +40,10 @@ public class BreezeCoreBootstrap {
 
     this.serviceRegistry = new SimpleServiceRegistry();
     this.eventBus = new SimpleEventBus(logger);
+    this.scheduler = new FoliaBreezeScheduler(plugin);
     this.databaseService = new DatabaseServiceImpl(logger);
+
+    serviceRegistry.register(BreezeScheduler.class, scheduler);
 
     final DynamicCommandRegistrar dynamicRegistrar = createCommandRegistrar(logger);
     final Path modulesDirectory = resolveModulesDirectory(plugin);
@@ -51,6 +55,7 @@ public class BreezeCoreBootstrap {
         eventBus,
         logger,
         plugin,
+        scheduler,
         dynamicRegistrar);
     this.commandRegistrar = new CoreCommandRegistrar(plugin, moduleManager);
   }
@@ -59,14 +64,14 @@ public class BreezeCoreBootstrap {
     final FileConfiguration config = plugin.getConfig();
 
     if (config.getBoolean("database.enabled", false)) {
-      initTask = Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+      scheduler.runAsync(() -> {
         try {
           databaseService.connect(DatabaseConfig.fromConfig(config));
           databaseService.migrate();
-          Bukkit.getScheduler().runTask(plugin, this::onPostDatabaseInit);
+          scheduler.runGlobal(this::onPostDatabaseInit);
         } catch (final Exception e) {
           logger.severe("Could not connect to the database, disabling BreezeCore: " + e.getMessage());
-          Bukkit.getPluginManager().disablePlugin(plugin);
+          plugin.getServer().getPluginManager().disablePlugin(plugin);
         }
       });
     } else {
@@ -76,15 +81,13 @@ public class BreezeCoreBootstrap {
   }
 
   public void stop() {
-    if (initTask != null) {
-      initTask.cancel();
-    }
     if (moduleScanTask != null) {
       moduleScanTask.cancel();
       moduleScanTask = null;
     }
     moduleManager.unloadAll();
     databaseService.shutdown();
+    serviceRegistry.unregister(BreezeScheduler.class);
   }
 
   public ModuleManager getModuleManager() {
@@ -101,6 +104,10 @@ public class BreezeCoreBootstrap {
 
   public EventBus getEventBus() {
     return eventBus;
+  }
+
+  public BreezeScheduler getScheduler() {
+    return scheduler;
   }
 
   private void onPostDatabaseInit() {
@@ -120,7 +127,7 @@ public class BreezeCoreBootstrap {
     final long settleMs = Math.max(500L, config.getLong("modules.copy_settle_ms", 2000));
     final long intervalTicks = intervalSeconds * 20L;
 
-    moduleScanTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+    moduleScanTask = scheduler.runGlobalTimer(() -> {
       final int loaded = moduleManager.scanForNewModules(settleMs);
       if (loaded > 0) {
         logger.info("Auto-scan loaded " + loaded + " new module(s).");

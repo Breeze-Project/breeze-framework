@@ -23,6 +23,7 @@ import ru.breezeproject.api.config.ModuleConfig;
 import ru.breezeproject.api.event.EventBus;
 import ru.breezeproject.api.module.BreezeModule;
 import ru.breezeproject.api.module.ModuleDescription;
+import ru.breezeproject.api.schedule.BreezeScheduler;
 import ru.breezeproject.api.service.ServiceRegistry;
 import ru.breezeproject.core.command.DynamicCommandRegistrar;
 import ru.breezeproject.core.context.BreezeModuleContextImpl;
@@ -40,6 +41,7 @@ public class ModuleLoader implements ModuleManager {
   private final Logger logger;
   private final DynamicCommandRegistrar commandRegistrar;
   private final JavaPlugin ownerPlugin;
+  private final BreezeScheduler scheduler;
   private final ModuleDescriptorReader descriptorReader;
   private final ModuleConfigLoader configLoader;
   private final DisabledModulesStore disabledModules;
@@ -56,6 +58,7 @@ public class ModuleLoader implements ModuleManager {
       final EventBus eventBus,
       final Logger logger,
       final JavaPlugin ownerPlugin,
+      final BreezeScheduler scheduler,
       final DynamicCommandRegistrar commandRegistrar) {
     this.directory = modulesDirectory;
     this.dataRoot = pluginDataFolder.resolve("modules/data");
@@ -63,6 +66,7 @@ public class ModuleLoader implements ModuleManager {
     this.eventBus = eventBus;
     this.logger = logger;
     this.ownerPlugin = ownerPlugin;
+    this.scheduler = scheduler;
     this.commandRegistrar = commandRegistrar;
     this.descriptorReader = new ModuleDescriptorReader();
     this.configLoader = new ModuleConfigLoader();
@@ -262,6 +266,7 @@ public class ModuleLoader implements ModuleManager {
           moduleDataFolder,
           commandRegistrar,
           ownerPlugin,
+          scheduler,
           descriptor.name());
 
       module.init(descriptor.name(), runtimeConfig, Logger.getLogger(descriptor.name()), context);

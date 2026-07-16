@@ -4,11 +4,13 @@ plugins {
 
 allprojects {
     group = "ru.breezeproject"
-    version = "1.4.0"
+    version = "1.5.0"
 
     repositories {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://maven.canvasmc.io/snapshots")
+        maven("https://maven.canvasmc.io/public")
     }
 }
 

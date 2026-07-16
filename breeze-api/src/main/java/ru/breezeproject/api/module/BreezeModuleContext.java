@@ -7,6 +7,7 @@ import ru.breezeproject.api.command.ModuleCommandExecutor;
 import ru.breezeproject.api.command.ModuleTabCompleter;
 import ru.breezeproject.api.event.BreezeListener;
 import ru.breezeproject.api.event.EventBus;
+import ru.breezeproject.api.schedule.BreezeScheduler;
 import ru.breezeproject.api.service.ServiceRegistry;
 
 public interface BreezeModuleContext {
@@ -22,4 +23,6 @@ public interface BreezeModuleContext {
   void registerListener(BreezeListener listener);
 
   Object getOwnerPluginHandle();
+
+  BreezeScheduler getScheduler();
 }
