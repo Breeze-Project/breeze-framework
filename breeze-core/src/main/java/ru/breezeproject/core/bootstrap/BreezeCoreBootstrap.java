@@ -6,10 +6,14 @@ import java.util.logging.Logger;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import ru.breezeproject.api.analytics.AnalyticsService;
+import ru.breezeproject.api.analytics.PostHogClient;
 import ru.breezeproject.api.event.EventBus;
 import ru.breezeproject.api.schedule.BreezeScheduler;
 import ru.breezeproject.api.schedule.BreezeTask;
 import ru.breezeproject.api.service.ServiceRegistry;
+import ru.breezeproject.core.analytics.CoreAnalyticsService;
+import ru.breezeproject.core.analytics.CorePostHogClient;
 import ru.breezeproject.core.command.CoreCommandRegistrar;
 import ru.breezeproject.core.command.DynamicCommandRegistrar;
 import ru.breezeproject.core.database.DatabaseConfig;
@@ -28,6 +32,8 @@ public class BreezeCoreBootstrap {
   private final ServiceRegistry serviceRegistry;
   private final EventBus eventBus;
   private final BreezeScheduler scheduler;
+  private final PostHogClient postHogClient;
+  private final AnalyticsService analyticsService;
   private final DatabaseService databaseService;
   private final ModuleManager moduleManager;
   private final CoreCommandRegistrar commandRegistrar;
@@ -41,9 +47,13 @@ public class BreezeCoreBootstrap {
     this.serviceRegistry = new SimpleServiceRegistry();
     this.eventBus = new SimpleEventBus(logger);
     this.scheduler = new FoliaBreezeScheduler(plugin);
+    this.postHogClient = new CorePostHogClient(plugin.getConfig(), logger);
+    this.analyticsService = new CoreAnalyticsService(postHogClient);
     this.databaseService = new DatabaseServiceImpl(logger);
 
     serviceRegistry.register(BreezeScheduler.class, scheduler);
+    serviceRegistry.register(PostHogClient.class, postHogClient);
+    serviceRegistry.register(AnalyticsService.class, analyticsService);
 
     final DynamicCommandRegistrar dynamicRegistrar = createCommandRegistrar(logger);
     final Path modulesDirectory = resolveModulesDirectory(plugin);
@@ -86,8 +96,11 @@ public class BreezeCoreBootstrap {
       moduleScanTask = null;
     }
     moduleManager.unloadAll();
+    postHogClient.shutdown();
     databaseService.shutdown();
     serviceRegistry.unregister(BreezeScheduler.class);
+    serviceRegistry.unregister(PostHogClient.class);
+    serviceRegistry.unregister(AnalyticsService.class);
   }
 
   public ModuleManager getModuleManager() {

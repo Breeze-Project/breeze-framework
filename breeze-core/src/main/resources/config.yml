@@ -8,6 +8,12 @@ database:
   password: "CHANGE_ME"
   pool-size: 10
 
+posthog:
+  enabled: false
+  api_key: ""
+  host: "https://us.i.posthog.com"
+  debug: false
+
 modules:
   directory: modules
   auto_scan:

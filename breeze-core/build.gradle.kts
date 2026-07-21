@@ -18,6 +18,7 @@ dependencies {
     compileOnly("io.canvasmc.canvas:canvas-api:1.21.11-R0.1-SNAPSHOT")
 
     implementation(project(":breeze-api"))
+    implementation("com.posthog:posthog-server:2.+")
 
     implementation("org.yaml:snakeyaml:2.2")
 
