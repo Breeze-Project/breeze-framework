@@ -1,5 +1,6 @@
 package ru.breezeproject.core.database;
 
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import javax.sql.DataSource;
@@ -22,12 +23,16 @@ public class DatabaseServiceImpl implements DatabaseService {
 
   @Override
   public void migrate() {
-    migrator.migrate(connectionManager.getDataSource(), connectionManager.getVendor());
+    connectionManager.getDataSource().ifPresent(dataSource ->
+        connectionManager.getVendor().ifPresent(vendor ->
+            migrator.migrate(dataSource, vendor)));
   }
 
   @Override
   public void rollbackTo(final int targetVersion) {
-    rollbackRunner.rollbackTo(connectionManager.getDataSource(), connectionManager.getVendor(), targetVersion);
+    connectionManager.getDataSource().ifPresent(dataSource ->
+        connectionManager.getVendor().ifPresent(vendor ->
+            rollbackRunner.rollbackTo(dataSource, vendor, targetVersion)));
   }
 
   @Override
@@ -41,12 +46,12 @@ public class DatabaseServiceImpl implements DatabaseService {
   }
 
   @Override
-  public DataSource getDataSource() {
-    return connectionManager.getDataSource();
+  public Optional<DataSource> getDataSource() {
+    return connectionManager.getDataSource().map(ds -> (DataSource) ds);
   }
 
   @Override
-  public DatabaseVendor getVendor() {
+  public Optional<DatabaseVendor> getVendor() {
     return connectionManager.getVendor();
   }
 }

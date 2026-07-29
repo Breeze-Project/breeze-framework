@@ -54,6 +54,7 @@ public class BreezeCoreBootstrap {
     serviceRegistry.register(BreezeScheduler.class, scheduler);
     serviceRegistry.register(PostHogClient.class, postHogClient);
     serviceRegistry.register(AnalyticsService.class, analyticsService);
+    serviceRegistry.register(DatabaseService.class, databaseService);
 
     final DynamicCommandRegistrar dynamicRegistrar = createCommandRegistrar(logger);
     final Path modulesDirectory = resolveModulesDirectory(plugin);
@@ -74,9 +75,10 @@ public class BreezeCoreBootstrap {
     final FileConfiguration config = plugin.getConfig();
 
     if (config.getBoolean("database.enabled", false)) {
+      final DatabaseConfig dbConfig = resolveDatabaseConfig(config);
       scheduler.runAsync(() -> {
         try {
-          databaseService.connect(DatabaseConfig.fromConfig(config));
+          databaseService.connect(dbConfig);
           databaseService.migrate();
           scheduler.runGlobal(this::onPostDatabaseInit);
         } catch (final Exception e) {
@@ -90,6 +92,19 @@ public class BreezeCoreBootstrap {
     }
   }
 
+  private DatabaseConfig resolveDatabaseConfig(final FileConfiguration config) {
+    final DatabaseConfig raw = DatabaseConfig.fromConfig(config);
+    if (!raw.type().equalsIgnoreCase("sqlite")) {
+      return raw;
+    }
+    final String rawPath = raw.name();
+    final java.nio.file.Path resolved = rawPath.startsWith("/")
+        ? java.nio.file.Path.of(rawPath)
+        : plugin.getDataFolder().toPath().resolve(rawPath).normalize();
+    return new DatabaseConfig(raw.type(), raw.host(), raw.port(), resolved.toString(),
+        raw.user(), raw.password(), raw.poolSize());
+  }
+
   public void stop() {
     if (moduleScanTask != null) {
       moduleScanTask.cancel();
@@ -101,6 +116,7 @@ public class BreezeCoreBootstrap {
     serviceRegistry.unregister(BreezeScheduler.class);
     serviceRegistry.unregister(PostHogClient.class);
     serviceRegistry.unregister(AnalyticsService.class);
+    serviceRegistry.unregister(DatabaseService.class);
   }
 
   public ModuleManager getModuleManager() {

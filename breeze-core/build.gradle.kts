@@ -3,15 +3,15 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("org.flywaydb:flyway-mysql:10.15.0")
-        classpath("org.postgresql:postgresql:42.7.3")
-        classpath("org.flywaydb:flyway-database-postgresql:10.15.0")
+        classpath("org.flywaydb:flyway-mysql:13.0.0")
+        classpath("org.flywaydb:flyway-database-postgresql:13.0.0")
+        classpath("org.flywaydb:flyway-database-nc-sqlite:13.0.0")
     }
 }
 
 plugins {
     java
-    id("org.flywaydb.flyway") version "10.15.0"
+    id("org.flywaydb.flyway") version "13.0.0"
 }
 
 dependencies {
@@ -23,11 +23,16 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2")
 
     implementation("com.zaxxer:HikariCP:5.1.0")
-    implementation("com.mysql:mysql-connector-j:8.4.0")
-    implementation("org.postgresql:postgresql:42.7.3")
 
-    implementation("org.flywaydb:flyway-core:10.15.0")
-    implementation("org.flywaydb:flyway-mysql:10.15.0")
+    runtimeOnly("com.mysql:mysql-connector-j:8.4.0")
+    runtimeOnly("org.postgresql:postgresql:42.7.3")
+    runtimeOnly("org.xerial:sqlite-jdbc:3.45.1.0")
+
+    implementation("org.flywaydb:flyway-core:13.0.0")
+    runtimeOnly("org.flywaydb:flyway-mysql:13.0.0")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql:13.0.0")
+    runtimeOnly("org.flywaydb:flyway-database-nc-sqlite:13.0.0")
+    runtimeOnly("org.flywaydb:flyway-nc-core:13.0.0")
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -35,10 +40,10 @@ dependencies {
 }
 
 flyway {
-    val vendor = (project.findProperty("dbVendor") as String?) ?: "mysql"
+    val vendor = (project.findProperty("dbVendor") as String?) ?: "sqlite"
     locations = arrayOf("classpath:migrations/$vendor/")
-    url = (project.findProperty("flyway.url") as String?) ?: "jdbc:mysql://localhost:3306/breezecore"
-    user = (project.findProperty("flyway.user") as String?) ?: "root"
+    url = (project.findProperty("flyway.url") as String?) ?: "jdbc:sqlite:breezecore.db"
+    user = (project.findProperty("flyway.user") as String?) ?: ""
     password = (project.findProperty("flyway.password") as String?) ?: ""
 }
 

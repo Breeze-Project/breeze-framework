@@ -1,5 +1,7 @@
 package ru.breezeproject.core.database;
 
+import java.util.Optional;
+
 import javax.sql.DataSource;
 
 public interface DatabaseService {
@@ -13,7 +15,7 @@ public interface DatabaseService {
 
   boolean isConnected();
 
-  DataSource getDataSource();
+  Optional<DataSource> getDataSource();
 
-  DatabaseVendor getVendor();
+  Optional<DatabaseVendor> getVendor();
 }

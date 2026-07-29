@@ -2,6 +2,7 @@ package ru.breezeproject.core.database;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 import com.zaxxer.hikari.HikariConfig;
@@ -27,39 +28,53 @@ public class DatabaseManager {
 
     hikariConfig.setDriverClassName(vendor.driverClassName());
     hikariConfig.setJdbcUrl(vendor.buildJdbcUrl(config.host(), config.port(), config.name()));
-    hikariConfig.setUsername(config.user());
-    hikariConfig.setPassword(config.password());
-    hikariConfig.setMaximumPoolSize(config.poolSize());
+
+    if (vendor.isRemote()) {
+      hikariConfig.setUsername(config.user());
+      hikariConfig.setPassword(config.password());
+      hikariConfig.setMaximumPoolSize(config.poolSize());
+      hikariConfig.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+      hikariConfig.setMaxLifetime(MAX_LIFETIME_MS);
+      hikariConfig.setLeakDetectionThreshold(LEAK_DETECTION_MS);
+    } else {
+      hikariConfig.setMaximumPoolSize(1);
+      hikariConfig.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
+      hikariConfig.setMaxLifetime(0);
+    }
+
     hikariConfig.setPoolName("BreezeCore-Pool");
 
-    hikariConfig.setConnectionTimeout(CONNECTION_TIMEOUT_MS);
-    hikariConfig.setMaxLifetime(MAX_LIFETIME_MS);
-    hikariConfig.setLeakDetectionThreshold(LEAK_DETECTION_MS);
-
     this.dataSource = new HikariDataSource(hikariConfig);
-    logger.info("Connected to " + vendor + " database '" + config.name() + "' at " + config.host() + ":" + config.port()
-        + " (pool size " + config.poolSize() + ")");
+
+    if (vendor.isRemote()) {
+      logger.info("Connected to " + vendor + " database '" + config.name() + "' at " + config.host() + ":" + config.port()
+          + " (pool size " + config.poolSize() + ")");
+    } else {
+      logger.info("Connected to SQLite database at " + config.name());
+    }
   }
 
-  public Connection getConnection() throws SQLException {
-    if (dataSource == null) {
-      throw new IllegalStateException("DatabaseManager.connect() was not called before getConnection()");
+  public Optional<Connection> getConnection() {
+    if (dataSource == null || dataSource.isClosed()) {
+      return Optional.empty();
     }
-    return dataSource.getConnection();
+    try {
+      return Optional.of(dataSource.getConnection());
+    } catch (final SQLException e) {
+      logger.warning("Failed to obtain database connection: " + e.getMessage());
+      return Optional.empty();
+    }
   }
 
-  public HikariDataSource getDataSource() {
-    if (dataSource == null) {
-      throw new IllegalStateException("DatabaseManager.connect() was not called before getDataSource()");
+  public Optional<HikariDataSource> getDataSource() {
+    if (dataSource == null || dataSource.isClosed()) {
+      return Optional.empty();
     }
-    return dataSource;
+    return Optional.of(dataSource);
   }
 
-  public DatabaseVendor getVendor() {
-    if (vendor == null) {
-      throw new IllegalStateException("DatabaseManager.connect() was not called before getVendor()");
-    }
-    return vendor;
+  public Optional<DatabaseVendor> getVendor() {
+    return Optional.ofNullable(vendor);
   }
 
   public void shutdown() {
